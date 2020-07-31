@@ -17,13 +17,19 @@
 ;;; Helper
 ;;;
 
-(defvar *tmp-path* (make-pathname :directory "tmp"))
+(defvar *tmp-path* (ensure-directories-exist (merge-pathnames #P".cache/cl-cuda/" (user-homedir-pathname))))
 
 (defun get-tmp-path ()
   *tmp-path*)
 
-(defun get-cu-path ()
-  (let ((name (format nil "cl-cuda.~A" (osicat-posix:mktemp))))
+(defun get-hashsum (code)
+  (ironclad:byte-array-to-hex-string 
+    (ironclad:digest-sequence 
+      :sha256
+      (ironclad:ascii-string-to-byte-array code))))
+
+(defun get-cu-path (cuda-code)
+  (let ((name (format nil "cl-cuda.~A" (get-hashsum cuda-code))))
     (make-pathname :name name :type "cu" :defaults (get-tmp-path))))
 
 (defun get-ptx-path (cu-path)
@@ -48,11 +54,12 @@
 ;;;
 
 (defun nvcc-compile (cuda-code)
-  (let* ((cu-path (get-cu-path))
+  (let* ((cu-path (get-cu-path cuda-code))
          (ptx-path (get-ptx-path cu-path)))
     (output-cuda-code cu-path cuda-code)
-    (print-nvcc-command cu-path ptx-path)
-    (run-nvcc-command cu-path ptx-path)
+    (unless (probe-file ptx-path)
+      (print-nvcc-command cu-path ptx-path)
+      (run-nvcc-command cu-path ptx-path))
     (namestring ptx-path)))
 
 (defun output-cuda-code (cu-path cuda-code)
