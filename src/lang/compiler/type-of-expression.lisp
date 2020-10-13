@@ -210,11 +210,11 @@
   (let ((operator (function-operator form))
         (operands (function-operands form)))
     ;; check if the operands have the same types as the operator expect
-    (let ((expected (function-environment-function-argument-types
-                      func-env operator))
-          (actual (type-of-operands operands var-env func-env)))
-      (unless (equal expected actual)
-        (error "The function application ~S is invalid." form)))
+    ;(let ((expected (function-environment-function-argument-types
+                      ;func-env operator))
+          ;(actual (type-of-operands operands var-env func-env)))
+      ;(unless (equal expected actual)
+        ;(error "The function application ~S is invalid." form)))
     (function-environment-function-return-type func-env operator)))
 
 (defun type-of-built-in-function (form var-env func-env)
