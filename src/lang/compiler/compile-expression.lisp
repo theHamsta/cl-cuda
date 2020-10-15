@@ -192,10 +192,10 @@
         (error "The type of expression ~S is invalid." form)))
     ;; check if the then part of inline-of expression has the same
     ;; type as the else part of it
-    (let ((then-type (type-of-expression then-expr var-env func-env))
-          (else-type (type-of-expression else-expr var-env func-env)))
-      (unless (eq then-type else-type)
-        (error "The type of expression ~S is invalid." form)))
+    ;(let ((then-type (type-of-expression then-expr var-env func-env))
+          ;(else-type (type-of-expression else-expr var-env func-env)))
+      ;(unless (eq then-type else-type)
+        ;(error "The type of expression ~S is invalid. ~A vs ~A" form then-type else-type)))
     (let ((test-expr1 (compile-expression test-expr var-env func-env))
           (then-expr1 (compile-expression then-expr var-env func-env))
           (else-expr1 (compile-expression else-expr var-env func-env)))

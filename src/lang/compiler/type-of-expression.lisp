@@ -161,10 +161,9 @@
           (else-type (type-of-expression else-expr var-env func-env)))
       ;; check if the then part of inline-of expression has the same
       ;; type as the else part of it
-      ;(unless (eq then-type else-type)
-        ;(error "The type of expression ~S is invalid." form)
-        ;)
-      then-type)))
+      (if (eq then-type else-type)
+          then-type
+          'float)))) ; TODO(seitz): infer this type from +
 
 
 ;;;
