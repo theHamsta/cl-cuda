@@ -8,3 +8,4 @@ work
 src/drvapi_error_string.h
 *.pgm
 *~
+vlime*
