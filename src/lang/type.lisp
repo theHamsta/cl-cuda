@@ -91,9 +91,9 @@
 ;;; Scalar type
 ;;;
 (cffi:defctype __half2        :int)   ; requires cc53 
-(cffi:defctype __nv_bfloat162 :int)   ; requires cc80
+(cffi:defctype __bfloat162 :int)   ; requires cc80
 (cffi:defctype __half         :short) ; requires cc53 
-(cffi:defctype __nv_bfloat16  :short) ; requires cc80
+(cffi:defctype __bfloat16  :short) ; requires cc80
 
 (defparameter +scalar-types+
   '((void :void "void")
