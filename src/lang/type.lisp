@@ -90,6 +90,10 @@
 ;;;
 ;;; Scalar type
 ;;;
+(cffi:defctype __half2        :int)   ; requires cc53 
+(cffi:defctype __nv_bfloat162 :int)   ; requires cc80
+(cffi:defctype __half         :short) ; requires cc53 
+(cffi:defctype __nv_bfloat16  :short) ; requires cc80
 
 (defparameter +scalar-types+
   '((void :void "void")
@@ -97,6 +101,8 @@
     (int :int "int")
     (float :float "float")
     (double :double "double")
+    (:half __half "__half")
+    (:bfloat16 __bfloat16 "__bfloat16")
     (curand-state-xorwow (:struct curand-state-xorwow)
                          "curandStateXORWOW_t")))
 
@@ -136,7 +142,11 @@
     (double4 "double4" ((double4-x "x" double)
                         (double4-y "y" double)
                         (double4-z "z" double)
-                        (double4-w "w" double)))))
+                        (double4-w "w" double)))
+    (:half2 "__half2" ((half2-x "x" :half2)
+                       (half2-y "y" :half2)))
+    (:bfloat162 "__bfloat162" ((bfloat162-x "x" :bfloat16)
+                               (bfloat162-y "y" :bfloat16)))))
 
 (defparameter +structure-types+
   (mapcar #'car +structure-table+))

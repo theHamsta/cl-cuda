@@ -19,3 +19,5 @@
                           :*sdk-not-found*))
 (reexport-from :cl-cuda.lang)
 (reexport-from :cl-cuda.api)
+
+(defconstant +with-half-dtype+ t)

@@ -95,6 +95,7 @@
 #include \"double3.h\"
 #include \"double4.h\"
 #include \"curand.h\"
+#include <cuda_fp16.hpp>
 ")
 
 (defun compile-variable-qualifier (qualifier)

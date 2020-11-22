@@ -90,6 +90,7 @@
   (let ((cffi-type (cffi-type type)))
     (cl-pattern:match cffi-type
       (:int (cffi:mem-aref host-ptr :int index))
+      (CL-CUDA.LANG.TYPE::__HALF (cffi:mem-aref host-ptr CL-CUDA.LANG.TYPE::__HALF index))
       (:float (cffi:mem-aref host-ptr :float index))
       (:double (cffi:mem-aref host-ptr :double index))
       ((:boolean :int8) (cffi:mem-aref host-ptr '(:boolean :int8) index))
@@ -104,6 +105,7 @@
   (let ((cffi-type (cffi-type type)))
     (cl-pattern:match cffi-type
       (:int (setf (cffi:mem-aref host-ptr :int index) new-value))
+      (CL-CUDA.LANG.TYPE::__HALF (setf (cffi:mem-aref host-ptr CL-CUDA.LANG.TYPE::__HALF index) new-value))
       (:float (setf (cffi:mem-aref host-ptr :float index) new-value))
       (:double (setf (cffi:mem-aref host-ptr :double index) new-value))
       ((:boolean :int8)
