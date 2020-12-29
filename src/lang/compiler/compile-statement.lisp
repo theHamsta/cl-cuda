@@ -19,12 +19,27 @@
 
 
 ;;;
+;;; Inline C
+;;;
+(defun inline-c-p (expr)
+  (equal (first expr) :inline-c))
+
+(defun compile-inline-c (expr var-env func-env)
+  (apply #'concatenate `(string ,@(mapcar
+                                    (lambda (e)
+                                      (if (stringp e)
+                                          e
+                                          (compile-expression e var-env func-env)))
+                                    (rest expr)))))
+
+;;;
 ;;; Compile statement
 ;;;
 
 (defun compile-statement (form var-env func-env)
   (cond
     ((%macro-p form func-env) (compile-macro form var-env func-env))
+    ((inline-c-p form) (compile-inline-c form var-env func-env))
     ((if-p form) (compile-if form var-env func-env))
     ((let-p form) (compile-let form var-env func-env))
     ((symbol-macrolet-p form) (compile-symbol-macrolet form var-env func-env))

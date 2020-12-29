@@ -19,9 +19,16 @@
 ;;;
 ;;; Compile expression
 ;;;
+(defun inline-c-p (expr)
+  (and (listp expr) (equalp (first expr) :inline-c)))
+
+(defun compile-inline-c (expr &optional var-env func-env)
+  (concatenate 'string (mapcar (lambda (e) (if (stringp e) e (apply #'compile-expression (list e var-env func-env))))
+                               (rest expr))))
 
 (defun compile-expression (form var-env func-env &optional initializer-p)
   (cond
+    ((inline-c-p form) (compile-inline-c form var-env func-env))
     ((%macro-p form func-env)
      (compile-macro form var-env func-env initializer-p))
     ((%symbol-macro-p form var-env)
@@ -135,7 +142,8 @@
     ((variable-environment-global-exists-p var-env form)
      (variable-environment-global-c-name var-env form))
     (t
-     (error "The variable ~S not found." form))))
+     (error "The variable ~S not found.
+            var env: ~A" form var-env))))
 
 
 ;;;

@@ -11,7 +11,8 @@
     (handler-bind
         (#+sbcl (sb-kernel::package-at-variance #'muffle-warning))
       (defpackage cl-cuda
-        (:use :cl :cl-reexport)))))
+        (:use :cl :cl-reexport)
+        (:export +hacked-cl-cuda+)))))
 (in-package :cl-cuda)
 
 (reexport-from :cl-cuda.driver-api
@@ -21,3 +22,4 @@
 (reexport-from :cl-cuda.api)
 
 (defconstant +with-half-dtype+ t)
+(defconstant +hacked-cl-cuda+ t)

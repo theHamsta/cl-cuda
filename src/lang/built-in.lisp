@@ -121,6 +121,8 @@
           ((double double) bool t ">="))
     ;; logical operators
     not  (((bool) bool nil "!"))
+    and  (((bool bool) bool t "&&"))
+    and  (((bool) bool nil ""))
     ;; bitwise operations
     xor (((int    int)    int    t   "^"))
     shl (((int    int)    int    t   "<<"))
@@ -183,15 +185,40 @@
     ;; It's :UNSIGNED-LONG-LONG, but this wrapper function only
     ;; supports INT.
     curand-init-xorwow (((int int int curand-state-xorwow*) void nil
-                         "curand_init_xorwow"))
+                                                            "curand_init_xorwow"))
     curand-uniform-float-xorwow (((curand-state-xorwow*) float nil
-                                  "curand_uniform_float_xorwow"))
+                                                         "curand_uniform_float_xorwow"))
     curand-uniform-double-xorwow (((curand-state-xorwow*) double nil
-                                   "curand_uniform_double_xorwow"))
+                                                          "curand_uniform_double_xorwow"))
     curand-normal-float-xorwow (((curand-state-xorwow*) float nil
-                                 "curand_normal_float_xorwow"))
+                                                        "curand_normal_float_xorwow"))
     curand-normal-double-xorwow (((curand-state-xorwow*) double nil
-                                  "curand_normal_double_xorwow"))))
+                                                         "curand_normal_double_xorwow"))
+  :coerce-float
+  (((int float) float t "+ 0 *")
+   ((float float) float t "+ 0 *")
+   ((double float) float t "+ 0 *")
+   ((float) float nil "(float)")
+   ((double) float nil "(float)")
+   ((int) float nil "(float)")
+   )
+  :coerce-int (((int float) int t "+ 0 *")
+               ((float float) int t "+ 0 *")
+               ((double float) int t "+ 0 *")
+               ((int) int nil "(int)")
+               ((float) int nil "(int)")
+               ((double) int nil "(int)"))
+  :coerce-double
+  (((int double) int t "+ 0 *")
+  ((float double) int t "+ 0 *")
+  ((double double) int t "+ 0 *")
+  ((int) float nil "(double)")
+  ((float) float nil "(double)")
+  ((double) float nil "(double)"))
+  ))
+
+
+(declaim (optimize (debug 3)))
 
 (defun inferred-function-candidates (name)
   (or (getf +built-in-functions+ name)
