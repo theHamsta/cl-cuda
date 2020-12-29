@@ -22,11 +22,14 @@
 (defun get-tmp-path ()
   *tmp-path*)
 
+(defun to-hex-string (bytes &aux (size (* 2 (length bytes))))
+  (let ((hex (make-array size :element-type 'character :fill-pointer 0)))
+    (prog1 hex
+      (with-output-to-string (o hex)
+        (map () (lambda (byte) (format o "~(~2,'0x~)" byte)) bytes)))))
+
 (defun get-hashsum (code)
-  (ironclad:byte-array-to-hex-string 
-    (ironclad:digest-sequence 
-      :sha256
-      (ironclad:ascii-string-to-byte-array code))))
+   (to-hex-string (md5:md5sum-string code)))
 
 (defun get-cu-path (cuda-code)
   (let ((name (format nil "cl-cuda.~A" (get-hashsum cuda-code))))

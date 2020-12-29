@@ -46,7 +46,7 @@
   :author "Masayuki Takagi"
   :license "MIT"
   :depends-on ("cffi" "alexandria" "external-program" "osicat"
-                      "cl-pattern" "split-sequence" "cl-reexport" "cl-ppcre" "ironclad")
+                      "cl-pattern" "split-sequence" "cl-reexport" "cl-ppcre" "md5")
   :components ((:module "src"
                         :serial t
                         :components
