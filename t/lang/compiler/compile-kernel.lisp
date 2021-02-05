@@ -36,7 +36,7 @@
 #include \"double.h\"
 #include \"double3.h\"
 #include \"double4.h\"
-#include \"curand.h\"
+//#include \"curand.h\"
 
 
 /**

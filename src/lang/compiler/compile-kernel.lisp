@@ -94,19 +94,19 @@
 #include \"double.h\"
 #include \"double3.h\"
 #include \"double4.h\"
-#include \"curand.h\"
-#include <cuda_fp16.h>
-#include <limits>
- #define FLT_MAX std::numeric_limits<float>::max()
- #define FLT_MIN std::numeric_limits<float>::min()
- #define DBL_MAX std::numeric_limits<double>::max()
- #define DBL_MIN std::numeric_limits<double>::min()
-#include <float.h>
-#include <cub/block/block_load.cuh>
 ")
-;(defun compile-includes ()
+;#include \"curand.h\"
+;#include <cuda_fp16.h>
+;#include <limits>
+ ;#define FLT_MAX std::numeric_limits<float>::max()
+ ;#define FLT_MIN std::numeric_limits<float>::min()
+ ;#define DBL_MAX std::numeric_limits<double>::max()
+ ;#define DBL_MIN std::numeric_limits<double>::min()
+;#include <float.h>
 ;#include <cub/block/block_load.cuh>
-;")
+;;(defun compile-includes ()
+;;#include <cub/block/block_load.cuh>
+;;")
 
 (defun compile-variable-qualifier (qualifier)
   (format nil "__~A__" (string-downcase (princ-to-string qualifier))))

@@ -164,7 +164,7 @@
   (unless (not (kernel-manager-compiled-p manager))
     (error "The kernel manager has already been compiled."))
   (let ((kernel (kernel-manager-kernel manager)))
-    (let ((module-path (nvcc-compile (compile-kernel kernel))))
+    (let ((module-path (nvrtc-compile (compile-kernel kernel))))
       (setf (kernel-manager-module-path manager) module-path)))
   t)
 
@@ -175,7 +175,9 @@
     (error "The kernel manager has already loaded the kernel module."))
   (cffi:with-foreign-object (hmodule 'cu-module)
     (let ((module-path (kernel-manager-module-path manager)))
-      (cu-module-load hmodule module-path)
+      (if (listp module-path)
+          (cu-module-load-data hmodule (first module-path))
+          (cu-module-load hmodule module-path))
       (setf (kernel-manager-module-handle manager)
             (cffi:mem-ref hmodule 'cu-module)))))
 

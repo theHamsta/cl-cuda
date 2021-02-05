@@ -5,13 +5,29 @@
 
 (in-package :cl-user)
 (defpackage cl-cuda.api.nvcc
-  (:use :cl)
+  (:use :cl
+        :cl-cuda.api.nvrtc)
   (:export :*tmp-path*
            :*nvcc-options*
            :*nvcc-binary*
-           :nvcc-compile))
+           :nvcc-compile
+           :nvrtc-compile))
 (in-package :cl-cuda.api.nvcc)
 
+(defvar *has-nvrtc* nil)
+
+(cffi:define-foreign-library libnvrtc
+  (:darwin (:framework "CUDA"))
+  (:unix (:or "libnvrtc.so")))
+(unless *has-nvrtc*
+  (handler-case (progn
+                  (cffi:use-foreign-library libnvrtc)
+                  (setf *has-nvrtc* t))
+    (cffi:load-foreign-library-error (e)
+      (princ e *error-output*)
+      (terpri *error-output*))))
+
+;; TODO (stephan): ensure thread-safely that there is not two processes writing out the same cache file
 
 ;;;
 ;;; Helper
@@ -39,7 +55,7 @@
   (make-pathname :type "ptx" :defaults cu-path))
 
 (defun get-include-path ()
-  (asdf:system-relative-pathname :cl-cuda #P"include"))
+  (asdf:system-relative-pathname :cl-cuda #P"include/"))
 
 (defvar *nvcc-options* nil)
 
@@ -51,7 +67,6 @@
                   "-o" (namestring ptx-path)
                   (namestring cu-path)))))
 
-
 ;;;
 ;;; Compiling with invoking NVCC
 ;;;
@@ -59,15 +74,18 @@
 (defun nvcc-compile (cuda-code)
   (let* ((cu-path (get-cu-path cuda-code))
          (ptx-path (get-ptx-path cu-path)))
-    (output-cuda-code cu-path cuda-code)
+    (write-file cu-path cuda-code)
     (unless (probe-file ptx-path)
       (print-nvcc-command cu-path ptx-path)
       (run-nvcc-command cu-path ptx-path))
     (namestring ptx-path)))
 
-(defun output-cuda-code (cu-path cuda-code)
-  (with-open-file (out cu-path :direction :output :if-exists :supersede)
-    (princ cuda-code out)))
+(defun write-file (file content)
+  (with-open-file (out file :direction :output :if-exists :supersede)
+    (princ content out)))
+
+(defun defer-write-file (file content)
+  (write-file file content))
 
 (defvar *nvcc-binary* "nvcc"
   "Set this to an absolute path if your lisp doesn't search PATH.")
@@ -84,3 +102,96 @@
         (unless (and (eq status :exited) (= 0 exit-code))
           (error "nvcc exits with code: ~A~%~A" exit-code
                  (get-output-stream-string out)))))))
+
+;;;
+;;; Compiling using nvrtc
+;;;
+(defparameter *builtin-headers*
+  '(#P"int.h"
+    #P"float.h"
+    #P"float3.h"
+    #P"float4.h"
+    #P"float4.h"
+    #P"double.h"
+    #P"double3.h"
+    #P"double4.h"))
+
+(defparameter *builtin-header-contents*
+  (mapcar (lambda (file)
+            ;; lol, let's leak!
+            (cons
+              (cffi:foreign-string-alloc
+                (alexandria:read-file-into-string
+                  (merge-pathnames file (get-include-path))))
+              (cffi:foreign-string-alloc (namestring file))))
+          *builtin-headers*))
+
+(defun nvcc-options-without-arch ()
+  (append *nvcc-options* (list "-I" (namestring (get-include-path)))
+  ;(remove-if-not (lambda (option) (let ((pos (search "-arch" option)))
+                                   ;(or (not pos) (/= 0 pos))))
+                 ;(append *nvcc-options* (list "-I" (namestring (get-include-path)))))
+  ))
+
+(defun nvrtc-compile (cuda-code)
+  "Compile CUDA code using nvrtc (Nvidia's runtime compilation library).
+  Falls back to nvcc if nvrtc is not available"
+  (if *has-nvrtc*
+      (let* ((ptx-path (get-ptx-path (get-cu-path cuda-code)))
+             (compile-options (nvcc-options-without-arch)))
+        (if (probe-file ptx-path)
+            (namestring ptx-path)
+            (progn
+              (cffi:with-foreign-strings ((c-cuda-code cuda-code)
+                                          (c-compile-options (format nil "~{~A\000~}" compile-options)))
+                (cffi:with-foreign-objects ((program 'nvrtcProgram)
+                                            (cached-headers '(:pointer :char) (length *builtin-header-contents*))
+                                            (cached-header-names '(:pointer :char) (length *builtin-header-contents*))
+                                            (c-options-pointer '(:pointer :char) (length compile-options))
+                                            (ptx-size '(:pointer :pointer))
+                                            (log-size '(:pointer :pointer)))
+                  (loop for header in *builtin-header-contents*
+                        for i from 0
+                        do (setf (cffi:mem-aref cached-headers '(:pointer :char) i) (car header))
+                        do (setf (cffi:mem-aref cached-header-names '(:pointer :char) i) (cdr header)))
+                  (loop for o in compile-options
+                        for i from 0
+                        with offset = 0
+                        do (setf (cffi:mem-aref c-options-pointer '(:pointer :char) i)
+                                 ;(cffi:mem-aptr c-compile-options offset)
+                                 (cffi:foreign-string-alloc o)
+                                 )
+                        do (setf offset (+ 1 (length o))))
+                  (assert (equalp :nvrtc-success (nvrtcCreateProgram program
+                                                                     c-cuda-code
+                                                                     (cffi:null-pointer)
+                                                                     0
+                                                                     (cffi:null-pointer)
+                                                                     (cffi:null-pointer))))
+                  ;(assert (equalp :nvrtc-success (nvrtcCreateProgram program
+                                                                     ;c-cuda-code
+                                                                     ;(cffi:null-pointer)
+                                                                     ;(length *builtin-headers*)
+                                                                     ;cached-headers
+                                                                     ;cached-header-names)))
+                  (let ((compilation-result (nvrtcCompileProgram (cffi:mem-ref program 'nvrtcProgram)
+                                                                      (length compile-options)
+                                                                      c-options-pointer)))
+                    (unless (equalp compilation-result :nvrtc-success)
+                      (assert (equalp :nvrtc-success (nvrtcGetProgramLogSize (cffi:mem-ref program 'nvrtcProgram)
+                                                                             log-size)))
+                      (error (cffi:with-foreign-pointer-as-string (log (cffi:mem-aref log-size :int64))
+                             (assert (equalp :nvrtc-success (nvrtcGetProgramLog (cffi:mem-ref program 'nvrtcProgram) log))))))
+                  (assert (equalp :nvrtc-success (nvrtcGetPtxSize (cffi:mem-ref program 'nvrtcProgram)
+                                                                  ptx-size)))
+                  (let ((ptx  (cffi:with-foreign-pointer-as-string (ptx (cffi:mem-aref ptx-size :int64))
+                                (assert (equalp :nvrtc-success (nvrtcGetPtx (cffi:mem-ref program 'nvrtcProgram)
+                                                                            ptx))))))
+                    (nvrtcDestroyProgram program)
+                    (defer-write-file ptx-path ptx)
+                    (list ptx))))))))
+      (nvcc-compile cuda-code)))
+
+(defun get-nvrtc-options ()
+  *nvcc-options*)
+
