@@ -33,7 +33,16 @@
 ;;; Helper
 ;;;
 
-(defvar *tmp-path* (ensure-directories-exist (merge-pathnames #P".cache/cl-cuda/" (user-homedir-pathname))))
+(defparameter *tmp-path* (ensure-directories-exist (merge-pathnames #P".cache/cl-cuda/" (user-homedir-pathname))))
+(defvar *prefer-jit-compilation* t)
+(defvar *string-dump* (make-hash-table :test #'equalp))
+
+(defun alloc-c-string (string &optional (dump *string-dump*))
+  (let ((rtn (gethash string dump)))
+    (unless rtn
+      (setf rtn (cffi:foreign-string-alloc string))
+      (setf (gethash string dump) rtn))
+    rtn))
 
 (defun get-tmp-path ()
   *tmp-path*)
@@ -106,7 +115,7 @@
 ;;;
 ;;; Compiling using nvrtc
 ;;;
-(defparameter *builtin-headers*
+(defvar *builtin-headers*
   '(#P"int.h"
     #P"float.h"
     #P"float3.h"
@@ -116,14 +125,13 @@
     #P"double3.h"
     #P"double4.h"))
 
-(defparameter *builtin-header-contents*
+(defvar *builtin-header-contents*
   (mapcar (lambda (file)
-            ;; lol, let's leak!
             (cons
-              (cffi:foreign-string-alloc
+              (alloc-c-string
                 (alexandria:read-file-into-string
                   (merge-pathnames file (get-include-path))))
-              (cffi:foreign-string-alloc (namestring file))))
+              (alloc-c-string (namestring file))))
           *builtin-headers*))
 
 (defun nvcc-options-without-arch ()
@@ -136,14 +144,16 @@
 (defun nvrtc-compile (cuda-code)
   "Compile CUDA code using nvrtc (Nvidia's runtime compilation library).
   Falls back to nvcc if nvrtc is not available"
-  (if *has-nvrtc*
+  (if (and *has-nvrtc* *prefer-jit-compilation*)
       (let* ((ptx-path (get-ptx-path (get-cu-path cuda-code)))
              (compile-options (nvcc-options-without-arch)))
         (if (probe-file ptx-path)
             (namestring ptx-path)
             (progn
               (cffi:with-foreign-strings ((c-cuda-code cuda-code)
-                                          (c-compile-options (format nil "~{~A\000~}" compile-options)))
+                                          (c-compile-options 
+                                            (apply #'concatenate `( string ,@(loop for o in compile-options
+                                                                                   collect (format nil "~A~A" o #\Null))))))
                 (cffi:with-foreign-objects ((program 'nvrtcProgram)
                                             (cached-headers '(:pointer :char) (length *builtin-header-contents*))
                                             (cached-header-names '(:pointer :char) (length *builtin-header-contents*))
@@ -158,9 +168,7 @@
                         for i from 0
                         with offset = 0
                         do (setf (cffi:mem-aref c-options-pointer '(:pointer :char) i)
-                                 ;(cffi:mem-aptr c-compile-options offset)
-                                 (cffi:foreign-string-alloc o)
-                                 )
+                                 (alloc-c-string o))
                         do (setf offset (+ 1 (length o))))
                   (assert (equalp :nvrtc-success (nvrtcCreateProgram program
                                                                      c-cuda-code
