@@ -134,19 +134,18 @@
               (alloc-c-string (namestring file))))
           *builtin-headers*))
 
-(defun nvcc-options-without-arch ()
-  (append *nvcc-options* (list "-I" (namestring (get-include-path)))
-  ;(remove-if-not (lambda (option) (let ((pos (search "-arch" option)))
-                                   ;(or (not pos) (/= 0 pos))))
-                 ;(append *nvcc-options* (list "-I" (namestring (get-include-path)))))
-  ))
+(defun filtered-nvcc-options ()
+  (remove-if-not (lambda (option) (and
+                                    (string/= option "--expt-relaxed-constexpr")
+                                    (string/= option "-Wno-deprecated-gpu-targets")))
+                 (append *nvcc-options* (list "-I" (namestring (get-include-path))))))
 
 (defun nvrtc-compile (cuda-code)
   "Compile CUDA code using nvrtc (Nvidia's runtime compilation library).
   Falls back to nvcc if nvrtc is not available"
   (if (and *has-nvrtc* *prefer-jit-compilation*)
       (let* ((ptx-path (get-ptx-path (get-cu-path cuda-code)))
-             (compile-options (nvcc-options-without-arch)))
+             (compile-options (filtered-nvcc-options)))
         (if (probe-file ptx-path)
             (namestring ptx-path)
             (progn
@@ -177,27 +176,27 @@
                                                                      (cffi:null-pointer)
                                                                      (cffi:null-pointer))))
                   ;(assert (equalp :nvrtc-success (nvrtcCreateProgram program
-                                                                     ;c-cuda-code
-                                                                     ;(cffi:null-pointer)
-                                                                     ;(length *builtin-headers*)
-                                                                     ;cached-headers
-                                                                     ;cached-header-names)))
+                  ;c-cuda-code
+                  ;(cffi:null-pointer)
+                  ;(length *builtin-headers*)
+                  ;cached-headers
+                  ;cached-header-names)))
                   (let ((compilation-result (nvrtcCompileProgram (cffi:mem-ref program 'nvrtcProgram)
-                                                                      (length compile-options)
-                                                                      c-options-pointer)))
+                                                                 (length compile-options)
+                                                                 c-options-pointer)))
                     (unless (equalp compilation-result :nvrtc-success)
                       (assert (equalp :nvrtc-success (nvrtcGetProgramLogSize (cffi:mem-ref program 'nvrtcProgram)
                                                                              log-size)))
                       (error (cffi:with-foreign-pointer-as-string (log (cffi:mem-aref log-size :int64))
-                             (assert (equalp :nvrtc-success (nvrtcGetProgramLog (cffi:mem-ref program 'nvrtcProgram) log))))))
-                  (assert (equalp :nvrtc-success (nvrtcGetPtxSize (cffi:mem-ref program 'nvrtcProgram)
-                                                                  ptx-size)))
-                  (let ((ptx  (cffi:with-foreign-pointer-as-string (ptx (cffi:mem-aref ptx-size :int64))
-                                (assert (equalp :nvrtc-success (nvrtcGetPtx (cffi:mem-ref program 'nvrtcProgram)
-                                                                            ptx))))))
-                    (nvrtcDestroyProgram program)
-                    (defer-write-file ptx-path ptx)
-                    (list ptx))))))))
+                               (assert (equalp :nvrtc-success (nvrtcGetProgramLog (cffi:mem-ref program 'nvrtcProgram) log))))))
+                    (assert (equalp :nvrtc-success (nvrtcGetPtxSize (cffi:mem-ref program 'nvrtcProgram)
+                                                                    ptx-size)))
+                    (let ((ptx  (cffi:with-foreign-pointer-as-string (ptx (cffi:mem-aref ptx-size :int64))
+                                  (assert (equalp :nvrtc-success (nvrtcGetPtx (cffi:mem-ref program 'nvrtcProgram)
+                                                                              ptx))))))
+                      (nvrtcDestroyProgram program)
+                      (defer-write-file ptx-path ptx)
+                      (list ptx))))))))
       (nvcc-compile cuda-code)))
 
 (defun get-nvrtc-options ()
