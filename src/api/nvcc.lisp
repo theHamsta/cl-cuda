@@ -38,11 +38,7 @@
 (defvar *string-dump* (make-hash-table :test #'equalp))
 
 (defun alloc-c-string (string &optional (dump *string-dump*))
-  (let ((rtn (gethash string dump)))
-    (unless rtn
-      (setf rtn (cffi:foreign-string-alloc string))
-      (setf (gethash string dump) rtn))
-    rtn))
+  (alexandria:ensure-gethash string dump (cffi:foreign-string-alloc string)))
 
 (defun get-tmp-path ()
   *tmp-path*)
