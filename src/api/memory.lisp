@@ -46,6 +46,8 @@
 (defun alloc-device-memory (type n)
   (cffi:with-foreign-object (device-ptr 'cu-device-ptr)
     (cu-mem-alloc device-ptr (* n (cffi-type-size type)))
+    ;; Allocation failed
+    (assert (/= 0 (cffi:mem-ref device-ptr 'cu-device-ptr)))
     (cffi:mem-ref device-ptr 'cu-device-ptr)))
 
 (defun free-device-memory (device-ptr)

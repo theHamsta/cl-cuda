@@ -84,7 +84,8 @@
                          (:module "api"
                                   :serial t
                                   :components
-                                  ((:file "nvcc")
+                                  ((:file "nvrtc")
+                                   (:file "nvcc")
                                    (:file "kernel-manager")
                                    (:file "memory")
                                    (:file "context")

@@ -135,6 +135,11 @@
   (module (:pointer cu-module))
   (fname :string))
 
+;; cuModuleLoadData
+(defcufun (cu-module-load-data "cuModuleLoadData" :disable-fp-traps t) cu-result
+  (module (:pointer cu-module))
+  (data :string))
+
 ;; cuModuleUnload
 (defcufun (cu-module-unload "cuModuleUnload") cu-result
   (module cu-module))

@@ -40,6 +40,7 @@
            :cu-memcpy-device-to-host
            :cu-memcpy-device-to-host-async
            :cu-module-load
+           :cu-module-load-data
            :cu-module-unload
            :cu-module-get-function
            :cu-module-get-global

@@ -175,7 +175,8 @@
     ;; delete kernel module
     (let ((module-path
            (cl-cuda.api.kernel-manager::kernel-manager-module-path mgr)))
-      (delete-file module-path))
+      (unless (listp module-path)
+        (delete-file module-path)))
     ;; try to load module which does not exist
     (is-error (kernel-manager-load-module mgr) simple-error
            "The kernel module which KERNEL-MANAGER specifies does not exist.")))
