@@ -21,8 +21,19 @@
 ;;; DEFCUFUN macro
 ;;;
 
+(eval-when (:execute :load-toplevel :compile-toplevel)
+  (cffi:define-foreign-library libamdhip
+    (:unix (:or "libamdhip64.so" "libamdhip64.so.4")))
+  (defparameter *has-hip* (handler-case
+                              (progn
+                                (cffi:use-foreign-library libamdhip)
+                                t)
+                            (cffi:load-foreign-library-error (e)
+                              (princ e *error-output*)
+                              (terpri *error-output*)))))
+
 (defmacro defcufun ((name c-name &key disable-fp-traps) return-type
-                    &rest arguments)
+                                                        &rest arguments)
   (let ((%name (format-symbol (symbol-package name) "%~A" name))
         (argument-vars (mapcar #'car arguments)))
     (if (not *sdk-not-found*)
@@ -34,8 +45,21 @@
                                        (,%name ,@argument-vars))
                                     `(,%name ,@argument-vars))))
            (cffi:defcfun (,%name ,c-name) ,return-type ,@arguments))
-        `(defun ,name ,argument-vars
-           (error 'sdk-not-found-error)))))
+        (if *has-hip*
+              ;; CUDA to HIP: prefix "cu" -> "hip" and remove version suffixes "_v*"
+              (let ((hip-name (cl-ppcre:regex-replace "_v\\d+$"
+                                                      (cl-ppcre:regex-replace "^cu" c-name "hip")
+                                                      "")))
+                `(progn
+                   (defun ,name ,argument-vars
+                     (check-cuda-error ',name
+                                       ,(if disable-fp-traps
+                                            `(without-fp-traps ()
+                                               (,%name ,@argument-vars))
+                                            `(,%name ,@argument-vars))))
+                   (cffi:defcfun (,%name ,hip-name) ,return-type ,@arguments)))
+              `(defun ,name ,argument-vars
+                 (error 'sdk-not-found-error))))))
 
 
 ;;;
