@@ -85,16 +85,17 @@
 ;;;
 ;;; Compile kernel
 ;;;
+(defvar *kernel-include-code*
+  "#include <curand_kernel.h>")
 
 (defun compile-includes ()
-  "#include \"int.h\"
-#include \"float.h\"
-#include \"float3.h\"
-#include \"float4.h\"
-#include \"double.h\"
-#include \"double3.h\"
-#include \"double4.h\"
-")
+  *kernel-include-code*)
+#|#include \"float.h\"|#
+#|#include \"float3.h\"|#
+#|#include \"float4.h\"|#
+#|#include \"double.h\"|#
+#|#include \"double3.h\"|#
+#|#include \"double4.h\"|#
 ;#include \"curand.h\"
 ;#include <cuda_fp16.h>
 ;#include <limits>
@@ -106,7 +107,7 @@
 ;#include <cub/block/block_load.cuh>
 ;;(defun compile-includes ()
 ;;#include <cub/block/block_load.cuh>
-;;")
+;;)
 
 (defun compile-variable-qualifier (qualifier)
   (format nil "__~A__" (string-downcase (princ-to-string qualifier))))
